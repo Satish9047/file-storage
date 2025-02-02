@@ -1,114 +1,143 @@
-import "./App.css";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { openDB } from "idb";
 
-function App() {
-  const [results, setResults] = useState([]);
-  const [fileName, setFileName] = useState("");
-  const [pdfUrl, setPdfUrl] = useState(null);
+const DB_NAME = "fileStoreDB";
+const STORE_NAME = "files";
 
-  // Initialize IndexedDB
-  const initDB = async () => {
-    return openDB("pdfBenchmarkDB", 1, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains("pdfs")) {
-          db.createObjectStore("pdfs", { keyPath: "name" });
-        }
-      },
-    });
+const initDB = async () => {
+  return openDB(DB_NAME, 1, {
+    upgrade(db) {
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+      }
+    },
+  });
+};
+
+export default function App() {
+  const [inputFile, setInputFile] = useState("");
+  const [fileList, setFileList] = useState([]);
+  const [displayFile, setDisplayFile] = useState(null);
+
+  useEffect(() => {
+    loadFiles();
+  }, []);
+
+  const loadFiles = async () => {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const fileList = await store.getAll();
+    setFileList(fileList);
   };
 
-  // Handle File Upload and Benchmark
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    setFileName(file.name);
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    setInputFile(file);
+  };
 
-    // Convert PDF file to Blob
-    const fileBlob = new Blob([await file.arrayBuffer()], { type: file.type });
+  const handleFileSave = async (e) => {
+    e.preventDefault();
+    if (!inputFile) return;
 
-    console.log(
-      `\nBenchmarking PDF: ${file.name} (${(fileBlob.size / 1024 / 1024).toFixed(2)} MB)`
-    );
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const newFile = {
+        id: Date.now(),
+        name: inputFile.name,
+        type: inputFile.type,
+        size: inputFile.size,
+        data: event.target.result,
+      };
 
+      const db = await initDB();
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      await store.add(newFile);
+      setFileList((prev) => [...prev, newFile]);
+      setInputFile(null);
+      document.getElementById("file-input").value = "";
+    };
+    reader.readAsArrayBuffer(inputFile);
+  };
+
+  const handleDisplayFile = async (fileId) => {
     const db = await initDB();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const file = await store.get(Number(fileId));
 
-    // Measure Write Time
-    const startWrite = performance.now();
-    await db.put("pdfs", { name: file.name, file: fileBlob });
-    const endWrite = performance.now();
-    const writeTime = (endWrite - startWrite).toFixed(2);
-
-    // Measure Read Time
-    const startRead = performance.now();
-    const storedData = await db.get("pdfs", file.name);
-    // Convert Blob to Object URL to Display PDF
-    if (storedData?.file) {
-      const pdfBlob = storedData.file;
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      setPdfUrl(pdfUrl); // Save the URL for rendering
+    if (file) {
+      const blob = new Blob([file.data], { type: file.type });
+      const fileURL = URL.createObjectURL(blob);
+      setDisplayFile({ ...file, url: fileURL });
     }
-    const endRead = performance.now();
-    const readTime = (endRead - startRead).toFixed(2);
+  };
 
-    console.log(`Write Time: ${writeTime} ms`);
-    console.log(`Read Time: ${readTime} ms`);
-
-    // Update Results
-    setResults((prev) => [
-      ...prev,
-      {
-        fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-        writeTime,
-        readTime,
-      },
-    ]);
+  const handleDeleteFile = async (fileId) => {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    await store.delete(fileId);
+    setFileList((prev) => prev.filter((file) => file.id !== fileId));
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
-      <h2>PDF IndexedDB Benchmark</h2>
-
-      <input type="file" accept="application/pdf" onChange={handleFileUpload} />
-
-      {fileName && <p>Testing file: {fileName}</p>}
-
-      {results.length > 0 && (
-        <table border="1" style={{ marginTop: "20px", width: "100%" }}>
-          <thead>
-            <tr>
-              <th>File Size</th>
-              <th>Write Time (ms)</th>
-              <th>Read Time (ms)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {results.map((result, index) => (
-              <tr key={index}>
-                <td>{result.fileSize}</td>
-                <td>{result.writeTime}</td>
-                <td>{result.readTime}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {/* Show PDF in iframe */}
-      {pdfUrl && (
+    <div className="flex justify-center min-h-screen p-4 bg-gray-100">
+      <div className="w-full max-w-3xl p-6 space-y-6 bg-white rounded-lg shadow-lg">
+        <form onSubmit={handleFileSave} className="space-y-4">
+          <h2 className="text-xl font-semibold">File Storage app</h2>
+          <div className="flex items-center space-x-4">
+            <input
+              type="file"
+              id="file-input"
+              onChange={handleFileChange}
+              className="w-full p-2 border rounded"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+            >
+              Save
+            </button>
+          </div>
+        </form>
         <div>
-          <h3>Stored PDF Preview</h3>
-          <iframe
-            src={pdfUrl}
-            width="100%"
-            height="500px"
-            title="Stored PDF"
-            style={{ border: "1px solid black" }}
-          ></iframe>
+          <h2 className="text-xl font-semibold">File List</h2>
+          <ul className="p-4 list-disc list-inside rounded shadow bg-gray-50">
+            {fileList.map((file) => (
+              <div
+                key={file.id}
+                className="flex justify-between text-blue-600 cursor-pointer hover:underline"
+              >
+                <li onClick={() => handleDisplayFile(file.id)}>{file.name}</li>
+                <span
+                  className="text-red-400"
+                  onClick={() => handleDeleteFile(file.id)}
+                >
+                  Delete
+                </span>
+              </div>
+            ))}
+          </ul>
         </div>
-      )}
+        <div>
+          <h2>File Preview</h2>
+          {displayFile ? (
+            <iframe
+              src={displayFile.url}
+              title={displayFile.name}
+              width="100%"
+              height="700px"
+            />
+          ) : (
+            <p className="text-gray-500">No file selected</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
-
-export default App;
