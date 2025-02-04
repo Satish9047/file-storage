@@ -87,35 +87,46 @@ export default function App() {
 
   return (
     <div className="flex justify-center min-h-screen p-4 bg-gray-100">
-      <div className="w-full max-w-3xl p-6 space-y-6 bg-white rounded-lg shadow-lg">
+      <div className="w-full max-w-full p-6 space-y-6 bg-white rounded-lg shadow-lg md:max-w-3xl">
+        {/* File Upload Form */}
         <form onSubmit={handleFileSave} className="space-y-4">
-          <h2 className="text-xl font-semibold">File Storage app</h2>
-          <div className="flex items-center space-x-4">
+          <h2 className="text-xl font-semibold text-center md:text-left">
+            File Storage App
+          </h2>
+          <div className="flex flex-col items-center gap-4 md:flex-row">
             <input
               type="file"
               id="file-input"
               onChange={handleFileChange}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border rounded-md"
             />
             <button
               type="submit"
-              className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700"
+              className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
             >
               Save
             </button>
           </div>
         </form>
+
+        {/* File List */}
         <div>
           <h2 className="text-xl font-semibold">File List</h2>
-          <ul className="p-4 list-disc list-inside rounded shadow bg-gray-50">
+          <ul className="p-4 list-none rounded-md shadow-md bg-gray-50">
             {fileList.map((file) => (
               <div
                 key={file.id}
-                className="flex justify-between text-blue-600 cursor-pointer hover:underline"
+                className="flex items-center justify-between p-2 mb-2 bg-white border rounded-md shadow-sm"
               >
-                <li onClick={() => handleDisplayFile(file.id)}>{file.name}</li>
+                <li
+                  className="w-3/4 text-blue-600 truncate cursor-pointer hover:underline"
+                  onClick={() => handleDisplayFile(file.id)}
+                  title={file.name} // Shows full name on hover
+                >
+                  {file.name}
+                </li>
                 <span
-                  className="text-red-400"
+                  className="px-2 text-red-500 cursor-pointer hover:text-red-600"
                   onClick={() => handleDeleteFile(file.id)}
                 >
                   Delete
@@ -124,17 +135,18 @@ export default function App() {
             ))}
           </ul>
         </div>
+
+        {/* File Preview */}
         <div>
-          <h2>File Preview</h2>
+          <h2 className="text-xl font-semibold">File Preview</h2>
           {displayFile ? (
             <iframe
               src={displayFile.url}
               title={displayFile.name}
-              width="100%"
-              height="700px"
+              className="w-full h-[500px] md:h-[700px] border rounded-md shadow"
             />
           ) : (
-            <p className="text-gray-500">No file selected</p>
+            <p className="text-center text-gray-500">No file selected</p>
           )}
         </div>
       </div>
