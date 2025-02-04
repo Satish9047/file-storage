@@ -121,7 +121,7 @@ export default function App() {
                 <li
                   className="w-3/4 text-blue-600 truncate cursor-pointer hover:underline"
                   onClick={() => handleDisplayFile(file.id)}
-                  title={file.name} // Shows full name on hover
+                  title={file.name}
                 >
                   {file.name}
                 </li>
@@ -140,11 +140,25 @@ export default function App() {
         <div>
           <h2 className="text-xl font-semibold">File Preview</h2>
           {displayFile ? (
-            <iframe
-              src={displayFile.url}
-              title={displayFile.name}
-              className="w-full h-[500px] md:h-[700px] border rounded-md shadow"
-            />
+            displayFile.type.includes("image") ? (
+              // Image Preview
+              <div className="flex justify-center">
+                <img
+                  src={displayFile.url}
+                  alt={displayFile.name}
+                  className="object-contain max-w-full rounded-md shadow-md"
+                />
+              </div>
+            ) : displayFile.type.includes("pdf") ? (
+              // PDF Preview
+              <iframe
+                src={displayFile.url}
+                title={displayFile.name}
+                className="w-full h-[500px] border rounded-md shadow"
+              />
+            ) : (
+              <p className="text-center text-gray-500">Preview not available</p>
+            )
           ) : (
             <p className="text-center text-gray-500">No file selected</p>
           )}
