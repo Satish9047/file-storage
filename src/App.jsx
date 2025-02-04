@@ -86,7 +86,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex justify-center min-h-screen p-4 bg-gray-100">
+    <div className="flex justify-center min-h-screen bg-gray-100 md:p-4">
       <div className="w-full max-w-full p-6 space-y-6 bg-white rounded-lg shadow-lg md:max-w-3xl">
         {/* File Upload Form */}
         <form onSubmit={handleFileSave} className="space-y-4">
